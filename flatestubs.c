@@ -17,7 +17,7 @@
 
 /* Stub code to interface with Zlib */
 
-#include "miniz.c" //Modified to use miniz.c rather than zlib 
+#include "miniz.c" //Modified to use miniz.c rather than zlib
 
 #include <stdint.h>
 
@@ -29,7 +29,7 @@
 
 #define ZStream_val(v) ((z_stream *) (v))
 
-static value * camlzip_error_exn = NULL;
+static caml_root camlzip_error_exn = NULL;
 
 static void camlzip_error(char * fn, value vzs)
 {
@@ -39,17 +39,14 @@ static void camlzip_error(char * fn, value vzs)
   msg = ZStream_val(vzs)->msg;
   if (msg == NULL) msg = "";
   if (camlzip_error_exn == NULL) {
-    camlzip_error_exn = caml_named_value("Zlib.Error");
+    camlzip_error_exn = caml_named_root("Zlib.Error");
     if (camlzip_error_exn == NULL)
       invalid_argument("Exception Zlib.Error not initialized");
   }
   Begin_roots3(s1, s2, bucket);
     s1 = copy_string(fn);
     s2 = copy_string(msg);
-    bucket = alloc_small(3, 0);
-    Field(bucket, 0) = *camlzip_error_exn;
-    Field(bucket, 1) = s1;
-    Field(bucket, 2) = s2;
+    bucket = caml_alloc_3(0, caml_read_root(camlzip_error_exn), s1, s2);
   End_roots();
   mlraise(bucket);
 }
@@ -79,7 +76,7 @@ value camlzip_deflateInit(value vlevel, value expect_header)
   return vzs;
 }
 
-static int camlzip_flush_table[] = 
+static int camlzip_flush_table[] =
 { Z_NO_FLUSH, Z_SYNC_FLUSH, Z_FULL_FLUSH, Z_FINISH };
 
 value camlzip_deflate(value vzs, value srcbuf, value srcpos, value srclen,
@@ -101,10 +98,10 @@ value camlzip_deflate(value vzs, value srcbuf, value srcpos, value srclen,
   used_out = Long_val(dstlen) - zs->avail_out;
   zs->next_in = NULL;         /* not required, but cleaner */
   zs->next_out = NULL;        /* (avoid dangling pointers into Caml heap) */
-  res = alloc_small(3, 0);
-  Field(res, 0) = Val_bool(retcode == Z_STREAM_END);
-  Field(res, 1) = Val_int(used_in);
-  Field(res, 2) = Val_int(used_out);
+  res = caml_alloc_3(0,
+    Val_bool(retcode == Z_STREAM_END),
+    Val_int(used_in),
+    Val_int(used_out));
   return res;
 }
 
@@ -150,10 +147,10 @@ value camlzip_inflate(value vzs, value srcbuf, value srcpos, value srclen,
   used_out = Long_val(dstlen) - zs->avail_out;
   zs->next_in = NULL;           /* not required, but cleaner */
   zs->next_out = NULL;          /* (avoid dangling pointers into Caml heap) */
-  res = alloc_small(3, 0);
-  Field(res, 0) = Val_bool(retcode == Z_STREAM_END);
-  Field(res, 1) = Val_int(used_in);
-  Field(res, 2) = Val_int(used_out);
+  res = caml_alloc_3(0,
+    Val_bool(retcode == Z_STREAM_END),
+    Val_int(used_in),
+    Val_int(used_out));
   return res;
 }
 
@@ -172,7 +169,7 @@ value camlzip_inflateEnd(value vzs)
 
 value camlzip_update_crc32(value crc, value buf, value pos, value len)
 {
-  return copy_int32(crc32((uint32_t) Int32_val(crc), 
+  return copy_int32(crc32((uint32_t) Int32_val(crc),
                           &Byte_u(buf, Long_val(pos)),
                           Long_val(len)));
 }
